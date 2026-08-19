@@ -170,17 +170,8 @@ export class FloatingSubtitleOverlay {
     this.#hostEl = document.createElement("div");
     this.#hostEl.id = "kiss-floating-subtitle-root";
     this.#hostEl.setAttribute("notranslate", "yes");
-    Object.assign(this.#hostEl.style, {
-      position: "fixed",
-      top: "0",
-      left: "0",
-      width: "0",
-      height: "0",
-      zIndex: "2147483647",
-      pointerEvents: "none",
-      margin: "0",
-      padding: "0",
-    });
+    this.#hostEl.style.cssText =
+      "all: initial !important; position: fixed !important; top: 0 !important; left: 0 !important; width: 0 !important; height: 0 !important; z-index: 2147483647 !important; pointer-events: none !important; margin: 0 !important; padding: 0 !important; border: none !important; overflow: visible !important; display: block !important;";
 
     this.#shadowRoot = this.#hostEl.attachShadow({ mode: "open" });
 
@@ -191,29 +182,27 @@ export class FloatingSubtitleOverlay {
         font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
       }
       .kiss-float-card {
-        position: fixed;
+        all: initial;
+        box-sizing: border-box;
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+        position: fixed !important;
         min-width: 320px;
         max-width: 760px;
-        background: rgba(15, 23, 42, 0.92);
+        background: rgba(15, 23, 42, 0.94) !important;
         backdrop-filter: blur(16px);
         -webkit-backdrop-filter: blur(16px);
-        border: 1px solid rgba(255, 255, 255, 0.16);
-        border-radius: 16px;
-        box-shadow: 0 16px 48px rgba(0, 0, 0, 0.55), 0 0 0 1px rgba(255, 255, 255, 0.08);
-        padding: 10px 18px 14px 18px;
-        color: #f8fafc;
-        pointer-events: auto;
-        cursor: default;
-        transition: opacity 0.25s cubic-bezier(0.4, 0, 0.2, 1), transform 0.25s cubic-bezier(0.4, 0, 0.2, 1);
-        opacity: 0;
-        transform: translateY(12px) scale(0.98);
-        visibility: hidden;
-        z-index: 2147483647;
+        border: 1px solid rgba(255, 255, 255, 0.18) !important;
+        border-radius: 16px !important;
+        box-shadow: 0 16px 48px rgba(0, 0, 0, 0.65), 0 0 0 1px rgba(255, 255, 255, 0.08) !important;
+        padding: 10px 18px 14px 18px !important;
+        color: #f8fafc !important;
+        pointer-events: auto !important;
+        cursor: default !important;
+        z-index: 2147483647 !important;
+        display: none !important;
       }
       .kiss-float-card.visible {
-        opacity: 1;
-        transform: translateY(0) scale(1);
-        visibility: visible;
+        display: block !important;
       }
       .kiss-float-toolbar {
         display: flex;
