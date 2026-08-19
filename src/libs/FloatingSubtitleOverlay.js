@@ -1,4 +1,4 @@
-import { browser } from "./browser";
+import browser from "webextension-polyfill";
 import { MSG_SUBTITLE_BROADCAST, MSG_SUBTITLE_CONTROL } from "../config/msg";
 import { logger } from "./log";
 
@@ -102,8 +102,14 @@ export class FloatingSubtitleOverlay {
   }
 
   #initMessageListener() {
-    if (browser?.runtime?.onMessage) {
-      browser.runtime.onMessage.addListener((message) => {
+    const runtime =
+      (typeof browser !== "undefined" && browser?.runtime) ||
+      (typeof globalThis.chrome !== "undefined" &&
+        globalThis.chrome?.runtime) ||
+      null;
+
+    if (runtime?.onMessage) {
+      runtime.onMessage.addListener((message) => {
         if (message?.action === MSG_SUBTITLE_BROADCAST && message?.args) {
           this.handleSubtitleUpdate(message.args);
         }
@@ -520,10 +526,16 @@ export class FloatingSubtitleOverlay {
   }
 
   #sendControl(controlArgs) {
-    if (browser?.runtime?.sendMessage) {
+    const runtime =
+      (typeof browser !== "undefined" && browser?.runtime) ||
+      (typeof globalThis.chrome !== "undefined" &&
+        globalThis.chrome?.runtime) ||
+      null;
+
+    if (runtime?.sendMessage) {
       try {
         Promise.resolve(
-          browser.runtime.sendMessage({
+          runtime.sendMessage({
             action: MSG_SUBTITLE_CONTROL,
             args: controlArgs,
           })
