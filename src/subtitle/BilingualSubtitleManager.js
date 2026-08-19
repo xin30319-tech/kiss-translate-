@@ -35,6 +35,8 @@ export class BilingualSubtitleManager {
   #syncPaperBottomAfterDrag = null; // 拖拽结束后按当前控制条状态修正字幕位置
   #lastPipText = ""; // 缓存上一句画中画英文字幕，避免停顿空白闪烁
   #lastPipTrans = ""; // 缓存上一句画中画翻译字幕，避免停顿空白闪烁
+  #p1El = null; // 缓存主播放器英文字幕 DOM 节点，避免重复创建引起重绘闪烁
+  #p2El = null; // 缓存主播放器译文字幕 DOM 节点，避免重复创建引起重绘闪烁
 
   /**
    * @param {object} options
@@ -119,6 +121,8 @@ export class BilingualSubtitleManager {
     this.#formattedSubtitles = [];
     this.#wordTooltipController?.destroy();
     this.#wordTooltipController = null;
+    this.#p1El = null;
+    this.#p2El = null;
     this.#broadcastSubtitleSync(null);
   }
 
@@ -491,6 +495,24 @@ export class BilingualSubtitleManager {
       );
     }
 
+    // 积极预热：确保当前及未来 3 句字幕提前发起翻译，防止句子播到一半时译文突然弹入引发跳闪
+    if (subtitleIndex !== -1 && this.#formattedSubtitles) {
+      for (
+        let i = subtitleIndex;
+        i <= subtitleIndex + 3 && i < this.#formattedSubtitles.length;
+        i++
+      ) {
+        const sub = this.#formattedSubtitles[i];
+        if (
+          sub &&
+          (!sub.translation || sub._isDraftTranslation) &&
+          !sub.isTranslating
+        ) {
+          this.#translateAndStore(sub);
+        }
+      }
+    }
+
     // 触发预翻译加载
     if (triggerTranslations) {
       // 将播放前瞻窗口同步给上层 provider，用于按需触发后续 AI 断句 chunk。
@@ -520,8 +542,11 @@ export class BilingualSubtitleManager {
     const len = arr.length;
     if (len === 0) return -1;
 
-    // 快速边界截断，防止无谓的二分检索
-    if (currentTimeMs < arr[0].start || currentTimeMs > arr[len - 1].end) {
+    // 快速边界截断（允许末尾字幕延展 2000ms）
+    if (
+      currentTimeMs < arr[0].start ||
+      currentTimeMs > arr[len - 1].end + 2000
+    ) {
       return -1;
     }
 
@@ -530,7 +555,11 @@ export class BilingualSubtitleManager {
     while (left <= right) {
       const mid = Math.floor((left + right) / 2);
       const sub = arr[mid];
-      if (currentTimeMs >= sub.start && currentTimeMs <= sub.end) {
+      const nextStart = mid + 1 < len ? arr[mid + 1].start : sub.end + 2000;
+      // 允许字幕在句间微小停顿（最大延长 1500ms 直至下一句开讲）期间保持驻留，彻底消除句间黑屏闪烁
+      const effectiveEnd = Math.min(sub.end + 1500, nextStart);
+
+      if (currentTimeMs >= sub.start && currentTimeMs <= effectiveEnd) {
         return mid;
       } else if (currentTimeMs < sub.start) {
         right = mid - 1;
@@ -557,61 +586,58 @@ export class BilingualSubtitleManager {
     }
 
     if (subtitle) {
-      // 1. 创建字幕原文 (text) 显示节点
-      const p1 = document.createElement("p");
-      p1.style.cssText = this.#setting.originStyle;
-      p1.style.margin = "0";
-
       const isHoverLookupEnabled = this.#isHoverLookupEnabled();
 
+      if (!this.#p1El || !this.#p2El) {
+        this.#p1El = document.createElement("p");
+        this.#p1El.style.cssText = this.#setting.originStyle;
+        this.#p1El.style.margin = "0";
+
+        this.#p2El = document.createElement("p");
+        this.#p2El.style.cssText = this.#setting.translationStyle;
+        this.#p2El.style.margin = "0";
+
+        if (this.#setting.isBilingual) {
+          const children =
+            this.#setting.displayOrder === "translation-first"
+              ? [this.#p2El, this.#p1El]
+              : [this.#p1El, this.#p2El];
+          this.#captionWindowEl.replaceChildren(...children);
+        } else {
+          this.#captionWindowEl.replaceChildren(this.#p2El);
+        }
+      }
+
+      // 1. 原文更新
       if (isHoverLookupEnabled) {
-        // 如果开启划词查词，用 span 标记每个单词
-        p1.innerHTML = trustedTypesHelper.createHTML(
+        this.#p1El.innerHTML = trustedTypesHelper.createHTML(
           wrapWordsWithSpans(subtitle.text)
         );
+        this.#attachSpanListeners();
       } else {
-        // 没有查词需要时，只做常规安全截断后展示 text 文本内容
-        p1.textContent = truncateWords(subtitle.text);
+        this.#p1El.textContent = truncateWords(subtitle.text);
       }
 
-      // 2. 创建字幕译文 (translation) 显示节点
-      const p2 = document.createElement("p");
-      p2.style.cssText = this.#setting.translationStyle;
-      p2.style.margin = "0";
-      if (isHoverLookupEnabled) {
-        p2.innerHTML = trustedTypesHelper.createHTML(
-          wrapWordsWithSpans(subtitle.translation || "...")
+      // 2. 译文更新
+      const transText = subtitle.translation || "";
+      if (isHoverLookupEnabled && transText) {
+        this.#p2El.innerHTML = trustedTypesHelper.createHTML(
+          wrapWordsWithSpans(transText)
         );
       } else {
-        p2.textContent = truncateWords(subtitle.translation) || "...";
+        this.#p2El.textContent = truncateWords(transText) || "";
       }
 
-      // 3. 根据用户设置，决定显示双语对照还是仅显示翻译
-      if (this.#setting.isBilingual) {
-        const children =
-          this.#setting.displayOrder === "translation-first"
-            ? [p2, p1]
-            : [p1, p2];
-        this.#captionWindowEl.replaceChildren(...children);
-      } else {
-        this.#captionWindowEl.replaceChildren(p2);
-      }
-
-      // 4. 背词背句模式（模糊译文，鼠标悬停时才显现翻译）
+      // 3. 背词背句模式（模糊译文，鼠标悬停时才显现翻译）
       if (this.#setting.blurTranslation) {
         const blurValue = "blur(6px)";
-        p2.style.setProperty("filter", blurValue);
-        p2.addEventListener("pointerenter", () => {
-          p2.style.removeProperty("filter");
+        this.#p2El.style.setProperty("filter", blurValue);
+        this.#p2El.addEventListener("pointerenter", () => {
+          this.#p2El.style.removeProperty("filter");
         });
-        p2.addEventListener("pointerleave", () => {
-          p2.style.setProperty("filter", blurValue);
+        this.#p2El.addEventListener("pointerleave", () => {
+          this.#p2El.style.setProperty("filter", blurValue);
         });
-      }
-
-      // 5. 重新为新生成的 span 单词绑定 hover 查词动作
-      if (isHoverLookupEnabled) {
-        this.#attachSpanListeners();
       }
 
       this.#paperEl.style.display = "block";
