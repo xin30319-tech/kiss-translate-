@@ -31,11 +31,23 @@ export const getCurTabId = async () => {
  */
 export const sendBgMsg = (action, args) => {
   if (browser?.runtime?.sendMessage) {
-    return browser.runtime.sendMessage({ action, args });
+    return Promise.resolve(browser.runtime.sendMessage({ action, args })).catch(
+      () => {}
+    );
   }
   if (globalThis.chrome?.runtime?.sendMessage) {
     return new Promise((resolve) => {
-      globalThis.chrome.runtime.sendMessage({ action, args }, resolve);
+      try {
+        globalThis.chrome.runtime.sendMessage({ action, args }, (res) => {
+          if (globalThis.chrome.runtime.lastError) {
+            resolve(undefined);
+          } else {
+            resolve(res);
+          }
+        });
+      } catch {
+        resolve(undefined);
+      }
     });
   }
   return Promise.resolve();

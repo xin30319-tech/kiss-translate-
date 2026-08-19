@@ -5,6 +5,7 @@ import {
   MSG_GET_SUBTITLE_STATE,
 } from "../config/msg";
 import { logger } from "./log";
+import { sendBgMsg } from "./msg";
 
 const STORAGE_KEY_POS = "kiss_floating_sub_pos";
 const STORAGE_KEY_SCALE = "kiss_floating_sub_scale";
@@ -28,12 +29,15 @@ export class FloatingSubtitleOverlay {
   #broadcastChannel = null;
   #latestState = null;
   #hideTimer = null;
+  #pollTimer = null;
 
   constructor() {
     this.#loadSettings();
     this.#initBroadcastChannel();
     this.#initMessageListener();
     this.#initVisibilityListener();
+    this.#initPolling();
+    this.#createDom();
     this.#fetchCurrentSubtitleState();
   }
 
@@ -122,20 +126,21 @@ export class FloatingSubtitleOverlay {
     }
   }
 
-  async #fetchCurrentSubtitleState() {
-    const runtime =
-      (typeof browser !== "undefined" && browser?.runtime) ||
-      (typeof globalThis.chrome !== "undefined" &&
-        globalThis.chrome?.runtime) ||
-      null;
+  #initPolling() {
+    if (this.#pollTimer) clearInterval(this.#pollTimer);
+    this.#pollTimer = setInterval(() => {
+      if (
+        document.visibilityState === "visible" &&
+        !window.location.hostname.includes("youtube.com")
+      ) {
+        this.#fetchCurrentSubtitleState();
+      }
+    }, 1000);
+  }
 
-    if (!runtime?.sendMessage) return;
+  async #fetchCurrentSubtitleState() {
     try {
-      const state = await Promise.resolve(
-        runtime.sendMessage({
-          action: MSG_GET_SUBTITLE_STATE,
-        })
-      );
+      const state = await sendBgMsg(MSG_GET_SUBTITLE_STATE);
       if (state && (state.isPlaying || state.text || state.translation)) {
         this.handleSubtitleUpdate(state);
       }
@@ -551,22 +556,7 @@ export class FloatingSubtitleOverlay {
   }
 
   #sendControl(controlArgs) {
-    const runtime =
-      (typeof browser !== "undefined" && browser?.runtime) ||
-      (typeof globalThis.chrome !== "undefined" &&
-        globalThis.chrome?.runtime) ||
-      null;
-
-    if (runtime?.sendMessage) {
-      try {
-        Promise.resolve(
-          runtime.sendMessage({
-            action: MSG_SUBTITLE_CONTROL,
-            args: controlArgs,
-          })
-        ).catch(() => {});
-      } catch {}
-    }
+    sendBgMsg(MSG_SUBTITLE_CONTROL, controlArgs).catch(() => {});
   }
 
   /**
@@ -670,6 +660,7 @@ export class FloatingSubtitleOverlay {
       this.#cardEl.classList.add("visible");
       this.#cardEl.style.opacity = "1";
       this.#cardEl.style.visibility = "visible";
+      this.#cardEl.style.display = "block";
     }
   }
 
@@ -678,10 +669,15 @@ export class FloatingSubtitleOverlay {
       this.#cardEl.classList.remove("visible");
       this.#cardEl.style.opacity = "0";
       this.#cardEl.style.visibility = "hidden";
+      this.#cardEl.style.display = "none";
     }
   }
 
   destroy() {
+    if (this.#pollTimer) {
+      clearInterval(this.#pollTimer);
+      this.#pollTimer = null;
+    }
     this.#cancelHide();
     this.#broadcastChannel?.close();
     this.#hostEl?.remove();

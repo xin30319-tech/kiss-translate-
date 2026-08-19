@@ -9,6 +9,7 @@ import {
   API_SPE_TYPES,
 } from "../config";
 import { browser } from "../libs/browser.js";
+import { sendBgMsg } from "../libs/msg.js";
 import { downloadBlobFile } from "../libs/utils.js";
 import { newI18n } from "../config";
 import { buildBilingualVtt } from "./vtt.js";
@@ -1059,16 +1060,7 @@ export class YouTubeCaptionProvider {
         "YouTube 视频",
     };
 
-    if (browser?.runtime?.sendMessage) {
-      try {
-        Promise.resolve(
-          browser.runtime.sendMessage({
-            action: MSG_SUBTITLE_BROADCAST,
-            args: data,
-          })
-        ).catch(() => {});
-      } catch {}
-    }
+    sendBgMsg(MSG_SUBTITLE_BROADCAST, data).catch(() => {});
 
     try {
       if (typeof BroadcastChannel !== "undefined") {
