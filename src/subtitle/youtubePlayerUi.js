@@ -109,6 +109,26 @@ export class YouTubePlayerUi {
     toggleButton.appendChild(createLogoSVG());
     kissControls.appendChild(toggleButton);
 
+    const pipButton = document.createElement("button");
+    pipButton.className = "ytp-button kiss-pip-button";
+    pipButton.title = "开启双语字幕独立画中画悬浮窗 (PiP)";
+    const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+    svg.setAttribute("height", "100%");
+    svg.setAttribute("viewBox", "0 0 36 36");
+    svg.setAttribute("width", "100%");
+    const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
+    path.setAttribute(
+      "d",
+      "M25,17 L17,17 L17,23 L25,23 L25,17 Z M29,25 L29,11 C29,9.9 28.1,9 27,9 L9,9 C7.9,9 7,9.9 7,11 L7,25 C7,26.1 7.9,27 9,27 L27,27 C28.1,27 29,26.1 29,25 Z M27,25 L9,25 L9,11 L27,11 L27,25 Z"
+    );
+    path.setAttribute("fill", "#fff");
+    svg.appendChild(path);
+    pipButton.appendChild(svg);
+    pipButton.onclick = () => {
+      this.#getMenuProps()?.togglePipWindow?.();
+    };
+    kissControls.appendChild(pipButton);
+
     // 使用 DomManager 挂载 React 菜单，避免直接把菜单结构散落到 provider 编排层。
     this.#menuManager = new DomManager({
       id: "kiss-subtitle-menus",

@@ -511,6 +511,7 @@ export class YouTubeCaptionProvider {
       i18n: this.#i18n,
       updateSetting: this.updateSetting.bind(this),
       downloadSubtitle: this.downloadSubtitle.bind(this),
+      togglePipWindow: () => this.#managerInstance?.togglePipWindow(),
       transApis,
       progressed: this.#progressedNum,
       formData: {

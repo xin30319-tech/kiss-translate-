@@ -544,6 +544,7 @@ export function Menus({
   progressed = 0,
   updateSetting,
   downloadSubtitle,
+  togglePipWindow,
   transApis,
 }) {
   const [configModal, setConfigModal] = useState(null);
@@ -704,6 +705,11 @@ export function Menus({
         name="skipAd"
         value={skipAd}
         label={i18n("is_skip_ad")}
+      />
+      {/* 独立画中画双语字幕悬浮窗口 */}
+      <Button
+        label="🖼️ 开启独立画中画悬浮窗"
+        onClick={() => togglePipWindow?.()}
       />
       {/* 字幕下载动作按钮：按需 AI 断句下允许下载当前已处理的字幕 */}
       <Button

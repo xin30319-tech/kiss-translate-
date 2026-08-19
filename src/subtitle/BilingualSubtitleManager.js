@@ -616,6 +616,7 @@ export class BilingualSubtitleManager {
     }
 
     this.#broadcastSubtitleSync(subtitle);
+    this.#renderPipSubtitle(subtitle);
   }
 
   /**
@@ -794,9 +795,235 @@ export class BilingualSubtitleManager {
     }
   }
 
+  #pipWindow = null;
+  #pipOriginEl = null;
+  #pipTransEl = null;
+  #pipPlayPauseBtn = null;
+  #pipScale = 1.0;
+
+  async togglePipWindow() {
+    if (this.#pipWindow) {
+      try {
+        this.#pipWindow.close();
+      } catch {}
+      this.#pipWindow = null;
+      return;
+    }
+
+    if (
+      typeof window === "undefined" ||
+      !("documentPictureInPicture" in window)
+    ) {
+      alert(
+        "当前浏览器尚未支持 Document Picture-in-Picture API，请升级到 Chrome 116+ 体验独立画中画字幕。"
+      );
+      return;
+    }
+
+    try {
+      this.#pipWindow = await window.documentPictureInPicture.requestWindow({
+        width: 540,
+        height: 180,
+      });
+
+      const doc = this.#pipWindow.document;
+      doc.title = `${this.#setting?.docInfo?.title || "YouTube"} - 双语字幕画中画`;
+
+      const style = doc.createElement("style");
+      style.textContent = `
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; }
+        body {
+          background: #0f172a;
+          color: #f8fafc;
+          padding: 10px 16px;
+          display: flex;
+          flex-direction: column;
+          justify-content: space-between;
+          height: 100vh;
+          user-select: none;
+          overflow: hidden;
+        }
+        .pip-header {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          font-size: 11px;
+          color: #94a3b8;
+          padding-bottom: 6px;
+          border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        .pip-title {
+          overflow: hidden;
+          text-overflow: ellipsis;
+          white-space: nowrap;
+          max-width: 55%;
+          font-weight: 500;
+        }
+        .pip-controls {
+          display: flex;
+          gap: 4px;
+        }
+        .pip-btn {
+          background: rgba(255, 255, 255, 0.08);
+          border: 1px solid rgba(255, 255, 255, 0.15);
+          color: #cbd5e1;
+          border-radius: 4px;
+          padding: 2px 6px;
+          font-size: 11px;
+          cursor: pointer;
+        }
+        .pip-btn:hover {
+          background: rgba(255, 255, 255, 0.2);
+          color: #fff;
+        }
+        .pip-content {
+          flex: 1;
+          display: flex;
+          flex-direction: column;
+          justify-content: center;
+          text-align: center;
+          gap: 6px;
+          padding: 6px 0;
+        }
+        .pip-origin {
+          color: #cbd5e1;
+          font-size: 13px;
+          line-height: 1.4;
+          opacity: 0.9;
+        }
+        .pip-trans {
+          color: #38bdf8;
+          font-weight: 600;
+          font-size: 16px;
+          line-height: 1.4;
+          text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
+        }
+      `;
+      doc.head.appendChild(style);
+
+      const header = doc.createElement("div");
+      header.className = "pip-header";
+
+      const titleSpan = doc.createElement("span");
+      titleSpan.className = "pip-title";
+      titleSpan.textContent =
+        this.#setting?.docInfo?.title ||
+        document.title.replace(/ - YouTube$/, "").trim() ||
+        "YouTube 视频";
+
+      const controls = doc.createElement("div");
+      controls.className = "pip-controls";
+
+      const seekBackBtn = doc.createElement("button");
+      seekBackBtn.className = "pip-btn";
+      seekBackBtn.textContent = "⏪ 5s";
+      seekBackBtn.onclick = () => {
+        if (this.#videoEl) this.#videoEl.currentTime -= 5;
+      };
+
+      this.#pipPlayPauseBtn = doc.createElement("button");
+      this.#pipPlayPauseBtn.className = "pip-btn";
+      this.#pipPlayPauseBtn.textContent =
+        this.#videoEl && !this.#videoEl.paused ? "⏸" : "▶";
+      this.#pipPlayPauseBtn.onclick = () => {
+        if (this.#videoEl) {
+          if (this.#videoEl.paused) this.#videoEl.play();
+          else this.#videoEl.pause();
+        }
+      };
+
+      const seekFwdBtn = doc.createElement("button");
+      seekFwdBtn.className = "pip-btn";
+      seekFwdBtn.textContent = "5s ⏩";
+      seekFwdBtn.onclick = () => {
+        if (this.#videoEl) this.#videoEl.currentTime += 5;
+      };
+
+      const zoomOutBtn = doc.createElement("button");
+      zoomOutBtn.className = "pip-btn";
+      zoomOutBtn.textContent = "A-";
+      zoomOutBtn.onclick = () => {
+        this.#pipScale = Math.max(0.7, this.#pipScale - 0.1);
+        this.#updatePipScale();
+      };
+
+      const zoomInBtn = doc.createElement("button");
+      zoomInBtn.className = "pip-btn";
+      zoomInBtn.textContent = "A+";
+      zoomInBtn.onclick = () => {
+        this.#pipScale = Math.min(2.0, this.#pipScale + 0.1);
+        this.#updatePipScale();
+      };
+
+      controls.append(
+        seekBackBtn,
+        this.#pipPlayPauseBtn,
+        seekFwdBtn,
+        zoomOutBtn,
+        zoomInBtn
+      );
+      header.append(titleSpan, controls);
+
+      const content = doc.createElement("div");
+      content.className = "pip-content";
+
+      this.#pipOriginEl = doc.createElement("p");
+      this.#pipOriginEl.className = "pip-origin";
+
+      this.#pipTransEl = doc.createElement("p");
+      this.#pipTransEl.className = "pip-trans";
+
+      content.append(this.#pipOriginEl, this.#pipTransEl);
+      doc.body.append(header, content);
+
+      this.#pipWindow.addEventListener("pagehide", () => {
+        this.#pipWindow = null;
+        this.#pipOriginEl = null;
+        this.#pipTransEl = null;
+        this.#pipPlayPauseBtn = null;
+      });
+
+      const currentSubtitle =
+        this.#currentSubtitleIndex !== -1
+          ? this.#formattedSubtitles[this.#currentSubtitleIndex]
+          : null;
+      this.#renderPipSubtitle(currentSubtitle);
+    } catch (e) {
+      logger.error("Failed to open Document PiP window", e);
+    }
+  }
+
+  #updatePipScale() {
+    if (this.#pipOriginEl) {
+      this.#pipOriginEl.style.fontSize = `${Math.round(13 * this.#pipScale)}px`;
+    }
+    if (this.#pipTransEl) {
+      this.#pipTransEl.style.fontSize = `${Math.round(16 * this.#pipScale)}px`;
+    }
+  }
+
+  #renderPipSubtitle(subtitle) {
+    if (!this.#pipWindow) return;
+    if (this.#pipOriginEl) {
+      this.#pipOriginEl.textContent = subtitle?.text || "";
+      this.#pipOriginEl.style.display = subtitle?.text ? "block" : "none";
+    }
+    if (this.#pipTransEl) {
+      this.#pipTransEl.textContent =
+        subtitle?.translation ||
+        subtitle?.text ||
+        (this.#videoEl && !this.#videoEl.paused
+          ? "YouTube 正在播放中..."
+          : "视频已暂停");
+    }
+    if (this.#pipPlayPauseBtn && this.#videoEl) {
+      this.#pipPlayPauseBtn.textContent = !this.#videoEl.paused ? "⏸" : "▶";
+    }
+  }
+
   // 获取当前字幕的开始时间（以重新分段分句后的时间轴为准）
   #getCurrentSubtitleStartTime() {
-    const currentTimeMs = this.#videoEl.currentTime * 1000;
+    const currentTimeMs = this.#videoEl ? this.#videoEl.currentTime * 1000 : 0;
     const idx = this.#findSubtitleIndexForTime(currentTimeMs);
     return idx !== -1 ? this.#formattedSubtitles[idx].start : currentTimeMs;
   }
