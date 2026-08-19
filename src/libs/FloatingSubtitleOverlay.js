@@ -601,7 +601,7 @@ export class FloatingSubtitleOverlay {
       return;
     }
 
-    // 如果没有字幕内容且视频暂停了，延迟淡出
+    // 只要有视频正在播放 (isPlaying) 或者有字幕文本，就展示悬浮卡片
     if (!data.isPlaying && !data.text && !data.translation) {
       this.#scheduleHide(2000);
       return;
@@ -610,15 +610,23 @@ export class FloatingSubtitleOverlay {
     this.#createDom();
     if (!this.#cardEl) return;
 
+    // 确保已挂载进页面 DOM
+    if (this.#hostEl && !document.body?.contains(this.#hostEl)) {
+      (document.body || document.documentElement).appendChild(this.#hostEl);
+    }
+
     // 更新内容
-    if (this.#titleEl && data.videoTitle) {
-      this.#titleEl.textContent = data.videoTitle;
+    if (this.#titleEl) {
+      this.#titleEl.textContent = data.videoTitle || "YouTube 视频";
     }
     if (this.#originEl) {
       this.#originEl.textContent = data.text || "";
+      this.#originEl.style.display = data.text ? "block" : "none";
     }
     if (this.#transEl) {
-      this.#transEl.textContent = data.translation || "...";
+      this.#transEl.textContent =
+        data.translation ||
+        (data.text ? "..." : data.isPlaying ? "YouTube 正在播放..." : "");
     }
     if (this.#playPauseBtn) {
       this.#playPauseBtn.textContent = data.isPlaying ? "⏸" : "▶";
@@ -652,14 +660,24 @@ export class FloatingSubtitleOverlay {
   }
 
   show() {
+    if (!this.#hostEl) {
+      this.#createDom();
+    }
+    if (this.#hostEl && !document.body?.contains(this.#hostEl)) {
+      (document.body || document.documentElement).appendChild(this.#hostEl);
+    }
     if (this.#cardEl) {
       this.#cardEl.classList.add("visible");
+      this.#cardEl.style.opacity = "1";
+      this.#cardEl.style.visibility = "visible";
     }
   }
 
   hide() {
     if (this.#cardEl) {
       this.#cardEl.classList.remove("visible");
+      this.#cardEl.style.opacity = "0";
+      this.#cardEl.style.visibility = "hidden";
     }
   }
 

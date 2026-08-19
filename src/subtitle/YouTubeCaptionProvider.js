@@ -210,6 +210,23 @@ export class YouTubeCaptionProvider {
     waitForElement(YT_AD_SELECTOR, (adContainer) => {
       this.#moAds(adContainer);
     });
+
+    waitForElement(VIDEO_SELECTOR, (videoEl) => {
+      const broadcastRawState = () => {
+        if (!this.#managerInstance && videoEl) {
+          this.#broadcastSubtitleState({
+            text: "",
+            translation: "",
+            isPlaying: !videoEl.paused,
+            currentTime: videoEl.currentTime,
+            duration: videoEl.duration,
+          });
+        }
+      };
+
+      videoEl.addEventListener("play", broadcastRawState);
+      videoEl.addEventListener("pause", broadcastRawState);
+    });
   }
 
   /**
