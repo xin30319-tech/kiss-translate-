@@ -256,6 +256,11 @@ export async function run(isUserscript = false) {
     // 2. 初始化全局日志配置
     logger.setLevel(setting.logLevel);
 
+    // 2.1. 在所有非 iframe/PDF 顶级页面尽早初始化跨页面字幕悬浮监听
+    if (!isIframe && !isPdfDocument) {
+      initFloatingSubtitleOverlay();
+    }
+
     // 3. 页面类型拦截：若是 PDF / 图片 / 音视频等非 HTML 或纯文本媒体页面，则终止执行，避免注入多余 DOM
     const contentType = document?.contentType?.toLowerCase() || "";
     const isPdfDocument = contentType.includes("application/pdf");
@@ -315,11 +320,6 @@ export async function run(isUserscript = false) {
       transboxOnly: isPdfDocument,
     });
     translatorManager.start();
-
-    // 8.1. 在所有非 iframe/PDF 顶级页面初始化跨页面字幕悬浮监听
-    if (!isIframe && !isPdfDocument) {
-      initFloatingSubtitleOverlay();
-    }
 
     // 9. 若当前页面是嵌套的 iframe，不进行视频字幕翻译，避免多个 iframe 里重复跑字幕服务造成冲突
     if (isIframe || isPdfDocument) {

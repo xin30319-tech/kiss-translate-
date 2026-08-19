@@ -759,6 +759,30 @@ browser.runtime.onMessage.addListener(async ({ action, args }, sender) => {
   return handler(args, sender);
 });
 
+if (globalThis.chrome?.runtime?.onMessage) {
+  globalThis.chrome.runtime.onMessage.addListener(
+    (message, sender, sendResponse) => {
+      const { action, args } = message || {};
+      const handler = messageHandlers[action];
+      if (!handler) return false;
+
+      try {
+        const res = handler(args, sender);
+        if (res && typeof res.then === "function") {
+          res
+            .then((val) => sendResponse(val))
+            .catch((err) => sendResponse({ error: err?.message }));
+          return true;
+        } else {
+          sendResponse(res);
+        }
+      } catch (err) {
+        sendResponse({ error: err?.message });
+      }
+    }
+  );
+}
+
 /**
  * 监听浏览器系统快捷键事件 (browser.commands)。
  * 用户在 manifest 中声明的快捷键按下时，后台直接将对应的翻译指令广播给前台 content 脚本。
