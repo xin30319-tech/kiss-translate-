@@ -421,8 +421,19 @@ export class BilingualSubtitleManager {
   /**
    * 视频播放进度时间点前进回调，促使更新字幕与预翻译抓取
    */
+  #lastBroadcastTime = 0;
+
   onTimeUpdate() {
     this.#syncToCurrentTime();
+    const now = Date.now();
+    if (now - this.#lastBroadcastTime > 1000) {
+      this.#lastBroadcastTime = now;
+      const currentSubtitle =
+        this.#currentSubtitleIndex !== -1
+          ? this.#formattedSubtitles[this.#currentSubtitleIndex]
+          : null;
+      this.#broadcastSubtitleSync(currentSubtitle);
+    }
   }
 
   /**

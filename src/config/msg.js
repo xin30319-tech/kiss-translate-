@@ -54,6 +54,7 @@ export const EVENT_FAVORITE_WORD_CHANGE = "kiss_favorite_word_change"; // 当前
 export const MSG_XHR_DATA_YOUTUBE = "KISS_XHR_DATA_YOUTUBE"; // 传递 YouTube 拦截到的字幕 XHR 数据
 export const MSG_SUBTITLE_BROADCAST = "kiss_subtitle_broadcast"; // 跨标签页广播视频双语字幕及播放状态
 export const MSG_SUBTITLE_CONTROL = "kiss_subtitle_control"; // 跨标签页控制后台视频播放/暂停/快进/切回
+export const MSG_GET_SUBTITLE_STATE = "kiss_get_subtitle_state"; // 主动向后台拉取当前活跃视频字幕状态
 
 // --- 字幕菜单控制状态类型 ---
 export const MSG_MENUS_PROGRESSED = "progressed"; // 进度事件

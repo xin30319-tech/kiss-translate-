@@ -34,6 +34,7 @@ import {
   MSG_SHA256,
   MSG_SUBTITLE_BROADCAST,
   MSG_SUBTITLE_CONTROL,
+  MSG_GET_SUBTITLE_STATE,
 } from "./config";
 import {
   getSettingWithDefault,
@@ -572,6 +573,18 @@ let latestSubtitleState = {
   updatedAt: 0,
 };
 
+// 启动时从持久化存储恢复最后一次字幕状态
+try {
+  browser.storage?.local?.get("kiss_latest_subtitle")?.then?.((res) => {
+    if (res?.kiss_latest_subtitle) {
+      latestSubtitleState = {
+        ...latestSubtitleState,
+        ...res.kiss_latest_subtitle,
+      };
+    }
+  });
+} catch {}
+
 /**
  * 将字幕状态广播给除源标签页外的所有标签页
  */
@@ -612,6 +625,13 @@ const messageHandlers = {
   [MSG_CLEAR_CACHES]: () => tryClearCaches(), // 清空翻译缓存
   [MSG_OPEN_SEPARATE_WINDOW]: () => openSeparateWindowWithSavedBounds(), // 打开独立翻译小窗口
   [MSG_UPDATE_ICON]: (args, sender) => updateIcon(args, sender?.tab?.id), // 变更页面的插件高亮图标
+  [MSG_GET_SUBTITLE_STATE]: async () => {
+    // 检查状态是否过期（10分钟无更新则视为已停止）
+    if (Date.now() - (latestSubtitleState.updatedAt || 0) > 600000) {
+      latestSubtitleState.isPlaying = false;
+    }
+    return latestSubtitleState;
+  },
   [MSG_SUBTITLE_BROADCAST]: async (args, sender) => {
     const sourceTabId = sender?.tab?.id;
     latestSubtitleState = {
@@ -621,6 +641,11 @@ const messageHandlers = {
       sourceUrl: sender?.tab?.url || latestSubtitleState.sourceUrl,
       updatedAt: Date.now(),
     };
+    try {
+      browser.storage?.local
+        ?.set({ kiss_latest_subtitle: latestSubtitleState })
+        ?.catch?.(() => {});
+    } catch {}
     await broadcastSubtitleToOtherTabs(latestSubtitleState, sourceTabId);
     return { success: true };
   },
@@ -664,7 +689,7 @@ browser.tabs?.onActivated?.addListener?.(async (activeInfo) => {
     latestSubtitleState.isPlaying &&
     latestSubtitleState.sourceTabId &&
     latestSubtitleState.sourceTabId !== activeInfo.tabId &&
-    Date.now() - latestSubtitleState.updatedAt < 120000
+    Date.now() - latestSubtitleState.updatedAt < 600000
   ) {
     browser.tabs
       .sendMessage(activeInfo.tabId, {
@@ -673,6 +698,30 @@ browser.tabs?.onActivated?.addListener?.(async (activeInfo) => {
       })
       .catch(() => {});
   }
+});
+
+browser.windows?.onFocusChanged?.addListener?.(async (windowId) => {
+  if (windowId === browser.windows?.WINDOW_ID_NONE) return;
+  try {
+    const [activeTab] = await browser.tabs.query({
+      active: true,
+      windowId,
+    });
+    if (
+      activeTab?.id &&
+      latestSubtitleState.isPlaying &&
+      latestSubtitleState.sourceTabId &&
+      latestSubtitleState.sourceTabId !== activeTab.id &&
+      Date.now() - latestSubtitleState.updatedAt < 600000
+    ) {
+      browser.tabs
+        .sendMessage(activeTab.id, {
+          action: MSG_SUBTITLE_BROADCAST,
+          args: latestSubtitleState,
+        })
+        .catch(() => {});
+    }
+  } catch {}
 });
 
 browser.tabs?.onRemoved?.addListener?.(async (tabId) => {
@@ -688,6 +737,11 @@ browser.tabs?.onRemoved?.addListener?.(async (tabId) => {
       duration: 0,
       updatedAt: 0,
     };
+    try {
+      browser.storage?.local
+        ?.set({ kiss_latest_subtitle: latestSubtitleState })
+        ?.catch?.(() => {});
+    } catch {}
     broadcastSubtitleToOtherTabs({ isPlaying: false, closed: true });
   }
 });

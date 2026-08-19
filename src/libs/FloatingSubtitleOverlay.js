@@ -1,5 +1,9 @@
 import browser from "webextension-polyfill";
-import { MSG_SUBTITLE_BROADCAST, MSG_SUBTITLE_CONTROL } from "../config/msg";
+import {
+  MSG_SUBTITLE_BROADCAST,
+  MSG_SUBTITLE_CONTROL,
+  MSG_GET_SUBTITLE_STATE,
+} from "../config/msg";
 import { logger } from "./log";
 
 const STORAGE_KEY_POS = "kiss_floating_sub_pos";
@@ -30,6 +34,7 @@ export class FloatingSubtitleOverlay {
     this.#initBroadcastChannel();
     this.#initMessageListener();
     this.#initVisibilityListener();
+    this.#fetchCurrentSubtitleState();
   }
 
   #loadSettings() {
@@ -117,21 +122,41 @@ export class FloatingSubtitleOverlay {
     }
   }
 
+  async #fetchCurrentSubtitleState() {
+    const runtime =
+      (typeof browser !== "undefined" && browser?.runtime) ||
+      (typeof globalThis.chrome !== "undefined" &&
+        globalThis.chrome?.runtime) ||
+      null;
+
+    if (!runtime?.sendMessage) return;
+    try {
+      const state = await Promise.resolve(
+        runtime.sendMessage({
+          action: MSG_GET_SUBTITLE_STATE,
+        })
+      );
+      if (state && (state.isPlaying || state.text || state.translation)) {
+        this.handleSubtitleUpdate(state);
+      }
+    } catch {}
+  }
+
   #initVisibilityListener() {
-    document.addEventListener("visibilitychange", () => {
+    const handleActive = () => {
       // 如果当前是在 YouTube 页面且切回前台，隐藏本悬浮窗（由播放器自带字幕负责）
       if (
         document.visibilityState === "visible" &&
         window.location.hostname.includes("youtube.com")
       ) {
         this.hide();
-      } else if (
-        document.visibilityState === "visible" &&
-        this.#latestState?.isPlaying
-      ) {
-        this.handleSubtitleUpdate(this.#latestState);
+      } else if (document.visibilityState === "visible") {
+        this.#fetchCurrentSubtitleState();
       }
-    });
+    };
+
+    document.addEventListener("visibilitychange", handleActive);
+    window.addEventListener("focus", handleActive);
   }
 
   #createDom() {
