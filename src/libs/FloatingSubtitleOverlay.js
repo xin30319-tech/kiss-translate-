@@ -633,6 +633,12 @@ export class FloatingSubtitleOverlay {
       return;
     }
 
+    // 如果当前已经打开了独立画中画小窗口，则隐藏网页内嵌卡片，避免两个悬浮窗重叠打架
+    if (data.hasPipWindow) {
+      this.hide();
+      return;
+    }
+
     // 只要有视频正在播放 (isPlaying) 或者有字幕文本，就展示悬浮卡片
     if (!data.isPlaying && !data.text && !data.translation) {
       this.#scheduleHide(2000);

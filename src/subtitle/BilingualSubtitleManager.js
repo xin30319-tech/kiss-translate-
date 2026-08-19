@@ -423,6 +423,7 @@ export class BilingualSubtitleManager {
       isPlaying: this.#videoEl ? !this.#videoEl.paused : false,
       currentTime: this.#videoEl ? this.#videoEl.currentTime : 0,
       duration: this.#videoEl ? this.#videoEl.duration : 0,
+      hasPipWindow: !!this.#pipWindow,
     });
   }
 

@@ -174,23 +174,53 @@ export class YouTubePlayerUi {
   }
 
   /**
-   * 将 YouTube 原生字幕窗口移出屏幕，避免与双语字幕重叠。
+   * 将 YouTube 原生字幕窗口彻底隐藏，避免与双语字幕产生图层竞争和高频重绘闪烁。
    *
    * @returns {void}
    */
   hideYtCaption() {
+    let styleEl = document.getElementById("kiss-hide-yt-native-captions");
+    if (!styleEl) {
+      styleEl = document.createElement("style");
+      styleEl.id = "kiss-hide-yt-native-captions";
+      styleEl.textContent = `
+        #ytp-caption-window-container,
+        .ytp-caption-window-bottom,
+        .ytp-caption-window-rollup,
+        .caption-window,
+        .ytp-caption-segment {
+          display: none !important;
+          visibility: hidden !important;
+          opacity: 0 !important;
+          pointer-events: none !important;
+          clip: rect(0, 0, 0, 0) !important;
+          top: -99999px !important;
+        }
+      `;
+      (document.head || document.documentElement).appendChild(styleEl);
+    }
     const ytCaption = document.querySelector(YT_CAPTION_SELECTOR);
-    ytCaption && (ytCaption.style.top = "-10000px");
+    if (ytCaption) {
+      ytCaption.style.setProperty("display", "none", "important");
+      ytCaption.style.setProperty("top", "-99999px", "important");
+    }
   }
 
   /**
-   * 恢复 YouTube 原生字幕窗口的位置。
+   * 恢复 YouTube 原生字幕窗口的显示。
    *
    * @returns {void}
    */
   showYtCaption() {
+    const styleEl = document.getElementById("kiss-hide-yt-native-captions");
+    if (styleEl) {
+      styleEl.remove();
+    }
     const ytCaption = document.querySelector(YT_CAPTION_SELECTOR);
-    ytCaption && (ytCaption.style.top = "0");
+    if (ytCaption) {
+      ytCaption.style.removeProperty("display");
+      ytCaption.style.removeProperty("top");
+    }
   }
 
   /**
