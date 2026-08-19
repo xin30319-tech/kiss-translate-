@@ -1,0 +1,96 @@
+{
+  "name": "kiss-translator",
+  "description": "A minimalist bilingual translation Extension & Greasemonkey Script",
+  "version": "2.0.32",
+  "author": "Gabe<yugang2002@gmail.com>",
+  "private": true,
+  "dependencies": {
+    "@emotion/cache": "^11.11.0",
+    "@emotion/css": "^11.13.5",
+    "@emotion/react": "^11.11.1",
+    "@emotion/styled": "^11.11.0",
+    "@mui/icons-material": "^5.15.15",
+    "@mui/lab": "5.0.0-alpha.170",
+    "@mui/material": "^5.15.15",
+    "@streamparser/json": "^0.0.22",
+    "dompurify": "^3.4.0",
+    "query-string": "^8.1.0",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "react-markdown": "^8.0.7",
+    "react-router-dom": "^6.16.0",
+    "react-scripts": "5.0.1",
+    "sval": "^0.5.2",
+    "webdav": "^5.3.0",
+    "webextension-polyfill": "^0.10.0"
+  },
+  "scripts": {
+    "start": "cross-env REACT_APP_CLIENT=web react-app-rewired start",
+    "start:userscript": "cross-env REACT_APP_CLIENT=userscript react-app-rewired start",
+    "sync-version": "zx src/scripts/sync-version.mjs",
+    "version:patch": "zx src/scripts/update-version.mjs patch",
+    "version:minor": "zx src/scripts/update-version.mjs minor",
+    "version:major": "zx src/scripts/update-version.mjs major",
+    "version:set": "zx src/scripts/update-version.mjs set",
+    "build:chrome": "zx src/scripts/build-task.mjs --target=chrome",
+    "build:edge": "zx src/scripts/build-task.mjs --target=edge",
+    "build:safari-output": "zx src/scripts/build-task.mjs --target=safari",
+    "build:thunderbird": "zx src/scripts/build-task.mjs --target=thunderbird",
+    "build:firefox": "zx src/scripts/build-task.mjs --target=firefox",
+    "build:web": "zx src/scripts/build-task.mjs --target=web",
+    "build:safari": "node src/scripts/build-safari.mjs",
+    "build:userscript-ios": "zx src/scripts/build-ios.mjs",
+    "build:rules": "babel-node src/rules.js",
+    "format": "prettier --write \"**/*.{js,json,html}\"",
+    "build": "pnpm sync-version && pnpm format && pnpm build:chrome && pnpm build:edge && pnpm build:thunderbird && pnpm build:firefox && pnpm build:web && pnpm build:userscript-ios && pnpm build:rules",
+    "zip": "zx src/scripts/archive.mjs",
+    "build+zip": "cross-env CI=true pnpm build && pnpm zip",
+    "test": "react-app-rewired test",
+    "test:subtitle-segmentation": "babel-node src/scripts/test-subtitle-segmentation.js",
+    "eject": "react-scripts eject"
+  },
+  "eslintConfig": {
+    "extends": [
+      "react-app",
+      "react-app/jest"
+    ],
+    "globals": {
+      "GM": true,
+      "unsafeWindow": true,
+      "globalThis": true,
+      "messenger": true,
+      "LanguageDetector": true,
+      "Translator": true
+    }
+  },
+  "browserslist": {
+    "production": [
+      ">0.2%",
+      "not dead",
+      "not op_mini all"
+    ],
+    "development": [
+      "last 1 chrome version",
+      "last 1 firefox version",
+      "last 1 safari version"
+    ]
+  },
+  "devDependencies": {
+    "@babel/core": "^7.22.20",
+    "@babel/node": "^7.22.19",
+    "@babel/plugin-proposal-private-property-in-object": "^7.21.11",
+    "@babel/preset-env": "^7.22.20",
+    "bestzip": "^2.2.1",
+    "cross-env": "^7.0.3",
+    "dotenv": "^17.2.1",
+    "find-up": "^7.0.0",
+    "prettier": "3.6.2",
+    "react-app-rewired": "^2.2.1",
+    "zx": "^8.8.1"
+  },
+  "overrides": {
+    "fast-xml-parser": "4.5.4",
+    "shell-quote": "1.8.4",
+    "websocket-driver": "0.7.5"
+  }
+}
