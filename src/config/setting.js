@@ -250,7 +250,7 @@ export const DEFAULT_SETTING = {
   clearCache: false, // 每次浏览器重启时，是否自动清空翻译结果的本地网络缓存
   autoTranslateClipboard: false, // 打开文本翻译面板或重新聚焦独立窗口时，是否自动翻译剪贴板文本
   injectRules: true, // 页面加载时是否自动匹配并注入云端订阅的翻译规则
-  fabClickAction: 0, // 工具栏悬浮球按钮双击或单击的默认响应行为 (如开启/关闭翻译)
+  fabClickAction: 1, // 工具栏悬浮球按钮单击的默认响应行为 (1: 立即开启/关闭网页全文翻译, 0: 打开菜单)
   // injectWebfix: true, // 是否注入修复补丁(作废)
   // detectRemote: false, // 是否使用远程语言检测 （从rule移回）
   // contextMenus: true, // 是否添加右键菜单(作废)

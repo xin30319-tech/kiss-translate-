@@ -9,6 +9,7 @@ import { buildBilingualVtt } from "./vtt.js";
 import { getDocInfo } from "../libs/docInfo.js";
 import { isSubtitleModeEnabled } from "./modes.js";
 import { clearMsgHistory } from "../apis/history.js";
+import { getSettingWithDefault, setSetting } from "../libs/storage.js";
 import {
   buildTrackKey,
   findCaptionTrack,
@@ -313,15 +314,40 @@ export class YouTubeCaptionProvider {
    *
    * @public
    * @param {object} param0 参数对象。
-   * @param {string} param0.name 设置项属性键名。
-   * @param {*} param0.value 设置项的新值。
+   * @param {string} [param0.name] 设置项属性键名。
+   * @param {*} [param0.value] 设置项的新值。
+   * @param {Array<object>} [param0.updatedTransApis] 快捷更新的 API 配置列表。
    * @returns {void}
    */
-  updateSetting({ name, value }) {
-    if (this.#setting[name] === value) return;
+  async updateSetting({ name, value, updatedTransApis }) {
+    if (updatedTransApis) {
+      this.#setting.transApis = updatedTransApis;
+      try {
+        const stored = await getSettingWithDefault();
+        stored.transApis = updatedTransApis;
+        if (name && value !== undefined) {
+          if (!stored.subtitleSetting) stored.subtitleSetting = {};
+          stored.subtitleSetting[name] = value;
+        }
+        await setSetting(stored);
+      } catch (err) {
+        logger.info("Youtube Provider: save setting error", err);
+      }
+    } else if (name && value !== undefined) {
+      try {
+        const stored = await getSettingWithDefault();
+        if (!stored.subtitleSetting) stored.subtitleSetting = {};
+        stored.subtitleSetting[name] = value;
+        await setSetting(stored);
+      } catch (err) {}
+    }
+
+    if (this.#setting[name] === value && !updatedTransApis) return;
 
     logger.debug("Youtube Provider: update setting", name, value);
-    this.#setting[name] = value;
+    if (name) {
+      this.#setting[name] = value;
+    }
 
     this.#playerUi.updateMenuProps();
 

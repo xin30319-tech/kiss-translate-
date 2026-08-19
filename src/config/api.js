@@ -1796,7 +1796,46 @@ export function normalizeApiModelListUrls(transApis = []) {
   return hasChanges ? nextApis : transApis;
 }
 
+/**
+ * 校验某个翻译/AI API 是否已经配置好必要的凭证（如 API Key）
+ *
+ * @param {object} api API 配置对象
+ * @returns {boolean} 已配置返回 true，未配置有效 Key 返回 false
+ */
+export function isApiConfigured(api) {
+  if (!api) return false;
+  // Ollama 默认使用本地服务，不强制要求 API Key
+  if (api.apiType === OPT_TRANS_OLLAMA) return true;
+  // 某些完全免费且免 Key 的机器翻译类型（如 Google、Microsoft、内置 AI 等）
+  if (
+    api.apiType === OPT_TRANS_GOOGLE ||
+    api.apiType === OPT_TRANS_GOOGLE_2 ||
+    api.apiType === OPT_TRANS_MICROSOFT ||
+    api.apiType === OPT_TRANS_DEEPLFREE ||
+    api.apiType === OPT_TRANS_BUILTINAI
+  ) {
+    return true;
+  }
+  const effectiveKey =
+    typeof api.key === "string" && api.key.trim().length > 0
+      ? api.key
+      : typeof api.apiKey === "string" && api.apiKey.trim().length > 0
+      ? api.apiKey
+      : "";
+  if (effectiveKey.trim().length > 0) {
+    return true;
+  }
+  if (
+    Array.isArray(api.keys) &&
+    api.keys.some((k) => typeof k === "string" && k.trim().length > 0)
+  ) {
+    return true;
+  }
+  return false;
+}
+
 export const DEFAULT_API_TYPE = OPT_TRANS_MICROSOFT;
 export const DEFAULT_API_SETTING = DEFAULT_API_LIST.find(
   (a) => a.apiType === DEFAULT_API_TYPE
 );
+

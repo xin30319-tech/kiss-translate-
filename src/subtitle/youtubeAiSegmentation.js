@@ -140,6 +140,7 @@ export async function aiSegment({
   onSubtitleChunk,
   signal,
   setting,
+  showNotification,
 }) {
   // 调用方已经统一过滤非语音片段，这里只剔除无文本项，避免重复分类和事后回填。
   const segmentEvents = (chunkEvents || []).filter((item) => item?.text);
@@ -183,7 +184,7 @@ export async function aiSegment({
       },
     });
     logger.debug("Youtube Provider: aiSegment subtitles", subtitles);
-    if (Array.isArray(subtitles)) {
+    if (Array.isArray(subtitles) && subtitles.length > 0) {
       const initial = takeContinuousCuePrefix(
         markDraftTranslations(subtitles, clearSegmentTranslation),
         segmentEvents.length
@@ -242,7 +243,20 @@ export async function aiSegment({
       );
     }
   } catch (err) {
-    logger.info("Youtube Provider: ai segmentation", err);
+    logger.info("Youtube Provider: ai segmentation error", err);
+    if (showNotification && err?.name !== "AbortError") {
+      let msg = err?.message || String(err);
+      try {
+        const parsed = JSON.parse(msg);
+        msg =
+          parsed.response?.error?.message ||
+          parsed.response?.message ||
+          parsed.statusText ||
+          parsed.status ||
+          msg;
+      } catch (e) {}
+      showNotification(`⚠️ ${segApiSetting?.apiName || "AI"}: ${msg}`);
+    }
   }
 
   return formatSubtitles(segmentEvents, fromLang).sort(
@@ -326,6 +340,7 @@ export async function eventsToSubtitles({
       clearSegmentTranslation: shouldClearSegmentTranslation,
       signal,
       setting,
+      showNotification,
       onSubtitleChunk: ({ subtitles }) => {
         if (
           !subtitles?.length ||
@@ -372,6 +387,7 @@ export async function eventsToSubtitles({
       onAppendSubtitles,
       getCurrentVideoId,
       signal,
+      showNotification,
     });
 
     const processed = Math.floor(100 / eventChunks.length);
@@ -424,6 +440,7 @@ export function createAiChunkScheduler({
   onAppendSubtitles,
   getCurrentVideoId,
   signal,
+  showNotification,
 }) {
   const states = chunks.map(() => "pending");
   if (firstDoneIndex >= 0) states[firstDoneIndex] = "done";
@@ -512,6 +529,7 @@ export function createAiChunkScheduler({
         clearSegmentTranslation,
         signal,
         setting,
+        showNotification,
         onSubtitleChunk: ({ subtitles }) => {
           if (
             !subtitles?.length ||

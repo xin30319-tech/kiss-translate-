@@ -39,15 +39,20 @@ export default function ContentFab({
   // 处理点击事件。如果拖拽移动过，则忽略该次点击，防止误触
   const handleClick = useCallback(() => {
     if (!moved) {
-      if (fabClickAction === 1) {
-        // 直接触发全文翻译切换
-        processActions({ action: MSG_TRANS_TOGGLE });
-      } else {
-        // 弹出悬浮 Popup 控制面板
-        processActions({ action: MSG_POPUP_TOGGLE });
-      }
+      // 单击悬浮球：直接立即触发当前页面的全文双语翻译
+      processActions({ action: MSG_TRANS_TOGGLE });
     }
-  }, [moved, fabClickAction, processActions]);
+  }, [moved, processActions]);
+
+  // 右键点击悬浮球：直接弹出快捷控制面板与设置菜单
+  const handleContextMenu = useCallback(
+    (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      processActions({ action: MSG_POPUP_TOGGLE });
+    },
+    [processActions]
+  );
 
   // 计算悬浮球的位置参数，如果是初次加载则放置在视口垂直居中、贴在边缘的位置
   const fabProps = useMemo(
@@ -73,7 +78,13 @@ export default function ContentFab({
           onStart={handleStart}
           onMove={handleMove}
           handler={
-            <Fab size="small" color="primary" onClick={handleClick}>
+            <Fab
+              size="small"
+              color="primary"
+              onClick={handleClick}
+              onContextMenu={handleContextMenu}
+              title="单击：立即翻译当前页面 / 右键：打开功能设置菜单"
+            >
               <TranslateIcon
                 sx={{
                   width: 24,

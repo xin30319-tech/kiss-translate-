@@ -821,9 +821,14 @@ const genOpenAI = ({
       userMsg,
     ],
     temperature,
-    max_completion_tokens: maxTokens,
     stream: useStream,
   };
+
+  if (apiType === OPT_TRANS_OPENAI) {
+    body.max_completion_tokens = maxTokens;
+  } else {
+    body.max_tokens = maxTokens;
+  }
 
   applyThinkingParameters(body, {
     apiType,

@@ -22,6 +22,7 @@ import {
   PROMPT_MODE_GLOBAL,
   getPromptDisplayName,
   getSubtitlePromptOptions,
+  isApiConfigured,
 } from "../../config";
 import FormControlLabel from "@mui/material/FormControlLabel";
 import Alert from "@mui/material/Alert";
@@ -688,11 +689,17 @@ export default function SubtitleSetting() {
                 }}
               >
                 <MenuItem value={"-"}>{i18n("disable")}</MenuItem>
-                {aiEnabledApis.map((api) => (
-                  <MenuItem key={api.apiSlug} value={api.apiSlug}>
-                    {api.apiName}
-                  </MenuItem>
-                ))}
+                {aiEnabledApis.map((api) => {
+                  const configured = isApiConfigured(api);
+                  return (
+                    <MenuItem key={api.apiSlug} value={api.apiSlug}>
+                      {api.apiName}
+                      {configured
+                        ? ""
+                        : ` (${i18n("not_configured_key", "未配置Key")})`}
+                    </MenuItem>
+                  );
+                })}
               </TextField>
             </Grid>
             {segSlug !== "-" && (
@@ -763,11 +770,17 @@ export default function SubtitleSetting() {
                 onChange={handleChange}
               >
                 <MenuItem value={"-"}>{i18n("disable")}</MenuItem>
-                {aiEnabledApis.map((api) => (
-                  <MenuItem key={api.apiSlug} value={api.apiSlug}>
-                    {api.apiName}
-                  </MenuItem>
-                ))}
+                {aiEnabledApis.map((api) => {
+                  const configured = isApiConfigured(api);
+                  return (
+                    <MenuItem key={api.apiSlug} value={api.apiSlug}>
+                      {api.apiName}
+                      {configured
+                        ? ""
+                        : ` (${i18n("not_configured_key", "未配置Key")})`}
+                    </MenuItem>
+                  );
+                })}
               </TextField>
             </Grid>
             {/* 一批提交给 AI 进行断句的最长原始字幕文本长度阈值 */}
