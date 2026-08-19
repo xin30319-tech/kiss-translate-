@@ -333,23 +333,26 @@ export class FloatingSubtitleOverlay {
     const titleCont = document.createElement("div");
     titleCont.className = "kiss-float-left";
     titleCont.title = "点击直接切回 YouTube 视频标签页";
-    titleCont.innerHTML = `<span class="kiss-float-badge">YT</span><span class="kiss-float-title">YouTube 视频播放中</span>`;
+
+    const badgeSpan = document.createElement("span");
+    badgeSpan.className = "kiss-float-badge";
+    badgeSpan.textContent = "YT";
+
+    this.#titleEl = document.createElement("span");
+    this.#titleEl.className = "kiss-float-title";
+    this.#titleEl.textContent = "YouTube 视频播放中";
+
+    titleCont.appendChild(badgeSpan);
+    titleCont.appendChild(this.#titleEl);
     titleCont.addEventListener("click", () => {
       this.#sendControl({ action: "jump_to_tab" });
     });
-    this.#titleEl = titleCont.querySelector(".kiss-float-title");
 
     // 拖拽把手
     const dragHandle = document.createElement("div");
     dragHandle.className = "kiss-float-drag-handle";
     dragHandle.title = "按住拖拽移动悬浮字幕位置";
-    dragHandle.innerHTML = `
-      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-        <circle cx="9" cy="6" r="1.5"/><circle cx="15" cy="6" r="1.5"/>
-        <circle cx="9" cy="12" r="1.5"/><circle cx="15" cy="12" r="1.5"/>
-        <circle cx="9" cy="18" r="1.5"/><circle cx="15" cy="18" r="1.5"/>
-      </svg>
-    `;
+    dragHandle.textContent = "⠿";
 
     // 按钮动作区
     const actions = document.createElement("div");
