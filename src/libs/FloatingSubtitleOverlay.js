@@ -660,9 +660,11 @@ export class FloatingSubtitleOverlay {
       this.#originEl.style.display = newText ? "block" : "none";
       this.#renderedText = newText;
     }
-    if (this.#transEl && newTrans !== this.#renderedTrans) {
-      this.#transEl.textContent = newTrans;
-      this.#renderedTrans = newTrans;
+    const displayTrans =
+      newTrans || (newIsPlaying ? "YouTube 正在播放中..." : "等待视频播放...");
+    if (this.#transEl && displayTrans !== this.#renderedTrans) {
+      this.#transEl.textContent = displayTrans;
+      this.#renderedTrans = displayTrans;
     }
     if (this.#playPauseBtn && newIsPlaying !== this.#renderedIsPlaying) {
       this.#playPauseBtn.textContent = newIsPlaying ? "⏸" : "▶";
@@ -699,14 +701,14 @@ export class FloatingSubtitleOverlay {
       this.#createDom();
     }
     this.#ensureMounted();
-    if (this.#cardEl && !this.#cardEl.classList.contains("visible")) {
+    if (this.#cardEl) {
       this.#cardEl.classList.add("visible");
       this.#cardEl.style.display = "block";
     }
   }
 
   hide() {
-    if (this.#cardEl && this.#cardEl.classList.contains("visible")) {
+    if (this.#cardEl) {
       this.#cardEl.classList.remove("visible");
       this.#cardEl.style.display = "none";
     }
