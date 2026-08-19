@@ -66,6 +66,8 @@ export class BilingualSubtitleManager {
         getTimestamp: () => this.#getCurrentSubtitleStartTime(),
       });
     }
+
+    this.#initAutoPip();
   }
 
   // 判定是否激活了悬浮查词翻译功能
@@ -1035,6 +1037,55 @@ export class BilingualSubtitleManager {
     }
     if (this.#pipPlayPauseBtn && this.#videoEl) {
       this.#pipPlayPauseBtn.textContent = !this.#videoEl.paused ? "⏸" : "▶";
+    }
+  }
+
+  #initAutoPip() {
+    if (typeof navigator !== "undefined" && "mediaSession" in navigator) {
+      try {
+        navigator.mediaSession.setActionHandler(
+          "enterpictureinpicture",
+          async () => {
+            if (!this.#pipWindow && this.#videoEl && !this.#videoEl.paused) {
+              await this.togglePipWindow();
+            }
+          }
+        );
+      } catch (e) {
+        logger.debug("MediaSession enterpictureinpicture not supported", e);
+      }
+    }
+
+    if (this.#videoEl) {
+      try {
+        this.#videoEl.autoPictureInPicture = true;
+      } catch (e) {}
+    }
+
+    if (typeof document !== "undefined") {
+      document.addEventListener("visibilitychange", async () => {
+        if (document.visibilityState === "hidden") {
+          // 当用户离开当前 YouTube 标签页且视频正在播放时，自动唤起双语画中画
+          if (!this.#pipWindow && this.#videoEl && !this.#videoEl.paused) {
+            try {
+              await this.togglePipWindow();
+            } catch (err) {
+              logger.debug(
+                "Auto PiP request failed (may require user gesture)",
+                err
+              );
+            }
+          }
+        } else if (document.visibilityState === "visible") {
+          // 当用户切回 YouTube 标签页时，自动关闭画中画，无缝还原到网页内主播放器
+          if (this.#pipWindow) {
+            try {
+              this.#pipWindow.close();
+            } catch (e) {}
+            this.#pipWindow = null;
+          }
+        }
+      });
     }
   }
 
