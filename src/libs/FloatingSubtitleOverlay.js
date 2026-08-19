@@ -230,13 +230,12 @@ export class FloatingSubtitleOverlay {
         position: fixed !important;
         min-width: 360px !important;
         max-width: 800px !important;
-        background: #0f172a !important;
-        background: rgba(15, 23, 42, 0.96) !important;
-        backdrop-filter: blur(20px) !important;
-        -webkit-backdrop-filter: blur(20px) !important;
-        border: 1px solid rgba(255, 255, 255, 0.22) !important;
+        background: rgba(15, 23, 42, 0.55) !important;
+        backdrop-filter: blur(16px) saturate(180%) !important;
+        -webkit-backdrop-filter: blur(16px) saturate(180%) !important;
+        border: 1px solid rgba(255, 255, 255, 0.2) !important;
         border-radius: 16px !important;
-        box-shadow: 0 20px 50px rgba(0, 0, 0, 0.75), 0 0 0 1px rgba(255, 255, 255, 0.1) !important;
+        box-shadow: 0 16px 40px rgba(0, 0, 0, 0.35) !important;
         padding: 12px 20px 16px 20px !important;
         color: #f8fafc !important;
         pointer-events: auto !important;
