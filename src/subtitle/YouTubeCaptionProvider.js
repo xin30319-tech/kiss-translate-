@@ -1058,7 +1058,21 @@ export class YouTubeCaptionProvider {
         this.#docInfo?.title ||
         document.title.replace(/ - YouTube$/, "").trim() ||
         "YouTube 视频",
+      updatedAt: Date.now(),
     };
+
+    try {
+      if (typeof browser !== "undefined" && browser?.storage?.local) {
+        browser.storage.local
+          .set({ kiss_latest_subtitle: data })
+          .catch(() => {});
+      } else if (
+        typeof globalThis.chrome !== "undefined" &&
+        globalThis.chrome?.storage?.local
+      ) {
+        globalThis.chrome.storage.local.set({ kiss_latest_subtitle: data });
+      }
+    } catch {}
 
     sendBgMsg(MSG_SUBTITLE_BROADCAST, data).catch(() => {});
 

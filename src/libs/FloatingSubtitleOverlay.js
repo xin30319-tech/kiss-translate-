@@ -35,10 +35,33 @@ export class FloatingSubtitleOverlay {
     this.#loadSettings();
     this.#initBroadcastChannel();
     this.#initMessageListener();
+    this.#initStorageListener();
     this.#initVisibilityListener();
     this.#initPolling();
     this.#createDom();
     this.#fetchCurrentSubtitleState();
+  }
+
+  #initStorageListener() {
+    const onStorageChange = (changes, areaName) => {
+      if (
+        (areaName === "local" || !areaName) &&
+        changes?.kiss_latest_subtitle?.newValue
+      ) {
+        this.handleSubtitleUpdate(changes.kiss_latest_subtitle.newValue);
+      }
+    };
+
+    try {
+      if (typeof browser !== "undefined" && browser?.storage?.onChanged) {
+        browser.storage.onChanged.addListener(onStorageChange);
+      } else if (
+        typeof globalThis.chrome !== "undefined" &&
+        globalThis.chrome?.storage?.onChanged
+      ) {
+        globalThis.chrome.storage.onChanged.addListener(onStorageChange);
+      }
+    } catch {}
   }
 
   #loadSettings() {
@@ -140,7 +163,23 @@ export class FloatingSubtitleOverlay {
 
   async #fetchCurrentSubtitleState() {
     try {
-      const state = await sendBgMsg(MSG_GET_SUBTITLE_STATE);
+      let state = null;
+      if (typeof browser !== "undefined" && browser?.storage?.local) {
+        const res = await browser.storage.local.get("kiss_latest_subtitle");
+        state = res?.kiss_latest_subtitle;
+      } else if (
+        typeof globalThis.chrome !== "undefined" &&
+        globalThis.chrome?.storage?.local
+      ) {
+        state = await new Promise((resolve) => {
+          globalThis.chrome.storage.local.get("kiss_latest_subtitle", (res) => {
+            resolve(res?.kiss_latest_subtitle);
+          });
+        });
+      }
+      if (!state) {
+        state = await sendBgMsg(MSG_GET_SUBTITLE_STATE);
+      }
       if (state && (state.isPlaying || state.text || state.translation)) {
         this.handleSubtitleUpdate(state);
       }
