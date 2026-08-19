@@ -632,23 +632,27 @@ export class FloatingSubtitleOverlay {
     if (!this.#cardEl) return;
 
     // 确保已挂载进页面 DOM
-    if (this.#hostEl && !document.body?.contains(this.#hostEl)) {
-      (document.body || document.documentElement).appendChild(this.#hostEl);
+    const container = document.body || document.documentElement;
+    if (this.#hostEl && container && !container.contains(this.#hostEl)) {
+      container.appendChild(this.#hostEl);
     }
 
-    // 更新内容
-    if (this.#titleEl) {
-      this.#titleEl.textContent = data.videoTitle || "YouTube 视频";
+    // 更新内容：有文本时更新，遇到句间短暂停顿时保持上一句，避免卡片剧烈忽闪忽现
+    if (data.text || data.translation) {
+      if (this.#titleEl) {
+        this.#titleEl.textContent = data.videoTitle || "YouTube 视频";
+      }
+      if (this.#originEl) {
+        this.#originEl.textContent = data.text;
+        this.#originEl.style.display = "block";
+      }
+      if (this.#transEl) {
+        this.#transEl.textContent = data.translation || data.text;
+      }
+    } else if (this.#titleEl && data.videoTitle) {
+      this.#titleEl.textContent = data.videoTitle;
     }
-    if (this.#originEl) {
-      this.#originEl.textContent = data.text || "";
-      this.#originEl.style.display = data.text ? "block" : "none";
-    }
-    if (this.#transEl) {
-      this.#transEl.textContent =
-        data.translation ||
-        (data.text ? "..." : data.isPlaying ? "YouTube 正在播放..." : "");
-    }
+
     if (this.#playPauseBtn) {
       this.#playPauseBtn.textContent = data.isPlaying ? "⏸" : "▶";
       this.#playPauseBtn.title = data.isPlaying
@@ -658,7 +662,7 @@ export class FloatingSubtitleOverlay {
 
     this.show();
 
-    // 如果视频已暂停且字幕停顿，60秒后自动淡出
+    // 如果视频已暂停，60秒后自动淡出；播放中则持续常驻显示
     if (!data.isPlaying) {
       this.#scheduleHide(60000);
     } else {
