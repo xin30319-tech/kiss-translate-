@@ -230,6 +230,7 @@ export class FloatingSubtitleOverlay {
         position: fixed !important;
         min-width: 360px !important;
         max-width: 800px !important;
+        background: #0f172a !important;
         background: rgba(15, 23, 42, 0.96) !important;
         backdrop-filter: blur(20px) !important;
         -webkit-backdrop-filter: blur(20px) !important;
@@ -241,7 +242,7 @@ export class FloatingSubtitleOverlay {
         pointer-events: auto !important;
         cursor: default !important;
         z-index: 2147483647 !important;
-        display: none !important;
+        display: none;
         margin: 0 !important;
         line-height: normal !important;
       }
