@@ -33,6 +33,8 @@ export class BilingualSubtitleManager {
   #hoverTarget = null;
   #playerControlBarObserver = null; // 监听播放器底部控制条显隐突变的 MutationObserver
   #syncPaperBottomAfterDrag = null; // 拖拽结束后按当前控制条状态修正字幕位置
+  #lastPipText = ""; // 缓存上一句画中画英文字幕，避免停顿空白闪烁
+  #lastPipTrans = ""; // 缓存上一句画中画翻译字幕，避免停顿空白闪烁
 
   /**
    * @param {object} options
@@ -835,7 +837,7 @@ export class BilingualSubtitleManager {
       style.textContent = `
         * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; }
         body {
-          background: rgba(15, 23, 42, 0.65);
+          background: #0f172a;
           color: #f8fafc;
           padding: 8px 14px;
           display: flex;
@@ -844,7 +846,6 @@ export class BilingualSubtitleManager {
           height: 100vh;
           user-select: none;
           overflow: hidden;
-          transition: background 0.2s ease;
         }
         .pip-header {
           display: flex;
@@ -893,6 +894,8 @@ export class BilingualSubtitleManager {
           color: #f1f5f9;
           font-size: 13px;
           line-height: 1.4;
+          min-height: 18px;
+          margin: 0;
           text-shadow: 0 1px 3px rgba(0, 0, 0, 0.9), 0 0 2px rgba(0, 0, 0, 0.9);
         }
         .pip-trans {
@@ -900,6 +903,8 @@ export class BilingualSubtitleManager {
           font-weight: 600;
           font-size: 16px;
           line-height: 1.4;
+          min-height: 22px;
+          margin: 0;
           text-shadow: 0 2px 4px rgba(0, 0, 0, 0.95), 0 0 3px rgba(0, 0, 0, 0.9);
         }
       `;
@@ -1023,20 +1028,35 @@ export class BilingualSubtitleManager {
 
   #renderPipSubtitle(subtitle) {
     if (!this.#pipWindow) return;
-    if (this.#pipOriginEl) {
-      this.#pipOriginEl.textContent = subtitle?.text || "";
-      this.#pipOriginEl.style.display = subtitle?.text ? "block" : "none";
+
+    if (subtitle?.text) {
+      this.#lastPipText = subtitle.text;
     }
-    if (this.#pipTransEl) {
-      this.#pipTransEl.textContent =
-        subtitle?.translation ||
-        subtitle?.text ||
-        (this.#videoEl && !this.#videoEl.paused
-          ? "YouTube 正在播放中..."
-          : "视频已暂停");
+    if (subtitle?.translation || subtitle?.text) {
+      this.#lastPipTrans = subtitle.translation || subtitle.text;
+    }
+
+    const text = subtitle?.text || this.#lastPipText || "";
+    const trans =
+      subtitle?.translation ||
+      subtitle?.text ||
+      this.#lastPipTrans ||
+      (this.#videoEl && !this.#videoEl.paused
+        ? "YouTube 正在播放中..."
+        : "视频已暂停");
+
+    if (this.#pipOriginEl && this.#pipOriginEl.textContent !== text) {
+      this.#pipOriginEl.textContent = text;
+      this.#pipOriginEl.style.display = "block";
+    }
+    if (this.#pipTransEl && this.#pipTransEl.textContent !== trans) {
+      this.#pipTransEl.textContent = trans;
     }
     if (this.#pipPlayPauseBtn && this.#videoEl) {
-      this.#pipPlayPauseBtn.textContent = !this.#videoEl.paused ? "⏸" : "▶";
+      const icon = !this.#videoEl.paused ? "⏸" : "▶";
+      if (this.#pipPlayPauseBtn.textContent !== icon) {
+        this.#pipPlayPauseBtn.textContent = icon;
+      }
     }
   }
 
