@@ -32,6 +32,8 @@ import {
   PORT_STREAM_FETCH,
   MSG_UPDATE_ICON,
   MSG_SHA256,
+  MSG_SUBTITLE_BROADCAST,
+  MSG_SUBTITLE_CONTROL,
 } from "./config";
 import {
   getSettingWithDefault,
@@ -557,6 +559,40 @@ const injectToCurrentTab = async (func, args) => {
   });
 };
 
+// 跨标签页后台视频双语字幕同步状态
+let latestSubtitleState = {
+  sourceTabId: null,
+  sourceUrl: "",
+  videoTitle: "",
+  text: "",
+  translation: "",
+  isPlaying: false,
+  currentTime: 0,
+  duration: 0,
+  updatedAt: 0,
+};
+
+/**
+ * 将字幕状态广播给除源标签页外的所有标签页
+ */
+async function broadcastSubtitleToOtherTabs(state, excludeTabId = null) {
+  try {
+    const tabs = await browser.tabs.query({});
+    for (const tab of tabs) {
+      if (tab.id && tab.id !== excludeTabId) {
+        browser.tabs
+          .sendMessage(tab.id, {
+            action: MSG_SUBTITLE_BROADCAST,
+            args: state,
+          })
+          .catch(() => {});
+      }
+    }
+  } catch (err) {
+    kissLog("broadcast subtitle error", err);
+  }
+}
+
 // 后台消息指令与对应处理器映射表
 const messageHandlers = {
   [MSG_FETCH]: (args) => fetchHandle(args), // 跨域请求代理
@@ -576,7 +612,85 @@ const messageHandlers = {
   [MSG_CLEAR_CACHES]: () => tryClearCaches(), // 清空翻译缓存
   [MSG_OPEN_SEPARATE_WINDOW]: () => openSeparateWindowWithSavedBounds(), // 打开独立翻译小窗口
   [MSG_UPDATE_ICON]: (args, sender) => updateIcon(args, sender?.tab?.id), // 变更页面的插件高亮图标
+  [MSG_SUBTITLE_BROADCAST]: async (args, sender) => {
+    const sourceTabId = sender?.tab?.id;
+    latestSubtitleState = {
+      ...latestSubtitleState,
+      ...args,
+      sourceTabId: sourceTabId ?? latestSubtitleState.sourceTabId,
+      sourceUrl: sender?.tab?.url || latestSubtitleState.sourceUrl,
+      updatedAt: Date.now(),
+    };
+    await broadcastSubtitleToOtherTabs(latestSubtitleState, sourceTabId);
+    return { success: true };
+  },
+  [MSG_SUBTITLE_CONTROL]: async (args) => {
+    if (args?.action === "jump_to_tab") {
+      if (latestSubtitleState.sourceTabId) {
+        try {
+          const tab = await browser.tabs.get(latestSubtitleState.sourceTabId);
+          if (tab) {
+            await browser.tabs.update(latestSubtitleState.sourceTabId, {
+              active: true,
+            });
+            if (tab.windowId) {
+              await browser.windows.update(tab.windowId, { focused: true });
+            }
+          }
+        } catch (e) {
+          kissLog("jump to video tab failed", e);
+        }
+      }
+      return { success: true };
+    }
+
+    if (latestSubtitleState.sourceTabId) {
+      browser.tabs
+        .sendMessage(latestSubtitleState.sourceTabId, {
+          action: MSG_SUBTITLE_CONTROL,
+          args,
+        })
+        .catch(() => {});
+    }
+    return { success: true };
+  },
 };
+
+/**
+ * 监听标签页激活与关闭，确保切换标签页时无缝浮现字幕，关闭视频页时自动隐藏字幕
+ */
+browser.tabs?.onActivated?.addListener?.(async (activeInfo) => {
+  if (
+    latestSubtitleState.isPlaying &&
+    latestSubtitleState.sourceTabId &&
+    latestSubtitleState.sourceTabId !== activeInfo.tabId &&
+    Date.now() - latestSubtitleState.updatedAt < 120000
+  ) {
+    browser.tabs
+      .sendMessage(activeInfo.tabId, {
+        action: MSG_SUBTITLE_BROADCAST,
+        args: latestSubtitleState,
+      })
+      .catch(() => {});
+  }
+});
+
+browser.tabs?.onRemoved?.addListener?.(async (tabId) => {
+  if (tabId === latestSubtitleState.sourceTabId) {
+    latestSubtitleState = {
+      sourceTabId: null,
+      sourceUrl: "",
+      videoTitle: "",
+      text: "",
+      translation: "",
+      isPlaying: false,
+      currentTime: 0,
+      duration: 0,
+      updatedAt: 0,
+    };
+    broadcastSubtitleToOtherTabs({ isPlaying: false, closed: true });
+  }
+});
 
 /**
  * 注册全局统一的 runtime.onMessage 消息通道监听器。

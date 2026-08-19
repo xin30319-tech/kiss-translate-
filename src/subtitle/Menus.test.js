@@ -108,9 +108,9 @@ describe("subtitle Menus", () => {
     });
 
     // 找到 AI 智能断句的 Select 组件（包含 ai_segmentation 标签）
-    const segSelectLabel = Array.from(
-      container.querySelectorAll("div")
-    ).find((el) => el.textContent === "ai_segmentation");
+    const segSelectLabel = Array.from(container.querySelectorAll("div")).find(
+      (el) => el.textContent === "ai_segmentation"
+    );
     expect(segSelectLabel).toBeTruthy();
 
     // 点击打开下拉菜单
@@ -213,8 +213,8 @@ describe("subtitle Menus", () => {
     });
 
     // 找到当前已选中的 DeepSeek 旁边的 [改Key] 按钮
-    const editBtn = Array.from(container.querySelectorAll("span")).find(
-      (el) => el.textContent.includes("改Key")
+    const editBtn = Array.from(container.querySelectorAll("span")).find((el) =>
+      el.textContent.includes("改Key")
     );
     expect(editBtn).toBeTruthy();
 
@@ -265,4 +265,3 @@ describe("subtitle Menus", () => {
     container.remove();
   });
 });
-

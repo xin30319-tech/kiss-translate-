@@ -1820,8 +1820,8 @@ export function isApiConfigured(api) {
     typeof api.key === "string" && api.key.trim().length > 0
       ? api.key
       : typeof api.apiKey === "string" && api.apiKey.trim().length > 0
-      ? api.apiKey
-      : "";
+        ? api.apiKey
+        : "";
   if (effectiveKey.trim().length > 0) {
     return true;
   }
@@ -1838,4 +1838,3 @@ export const DEFAULT_API_TYPE = OPT_TRANS_MICROSOFT;
 export const DEFAULT_API_SETTING = DEFAULT_API_LIST.find(
   (a) => a.apiType === DEFAULT_API_TYPE
 );
-

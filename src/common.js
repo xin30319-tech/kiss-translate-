@@ -14,6 +14,7 @@ import { runSubtitle } from "./subtitle/subtitle";
 import { logger } from "./libs/log";
 import { injectInlineJs } from "./libs/injector";
 import TranslatorManager from "./libs/translatorManager";
+import { initFloatingSubtitleOverlay } from "./libs/FloatingSubtitleOverlay";
 
 /**
  * 油猴脚本特权桥接设置。
@@ -314,6 +315,11 @@ export async function run(isUserscript = false) {
       transboxOnly: isPdfDocument,
     });
     translatorManager.start();
+
+    // 8.1. 在所有非 iframe/PDF 顶级页面初始化跨页面字幕悬浮监听
+    if (!isIframe && !isPdfDocument) {
+      initFloatingSubtitleOverlay();
+    }
 
     // 9. 若当前页面是嵌套的 iframe，不进行视频字幕翻译，避免多个 iframe 里重复跑字幕服务造成冲突
     if (isIframe || isPdfDocument) {

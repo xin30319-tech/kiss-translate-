@@ -50,6 +50,7 @@ export class BilingualSubtitleManager {
     this.onTimeUpdate = this.onTimeUpdate.bind(this);
     this.onSeeking = this.onSeeking.bind(this);
     this.onSeek = this.onSeek.bind(this);
+    this.onPlayStateChange = this.onPlayStateChange.bind(this);
 
     // 对预翻译机制进行节流控制，以 (setting.throttleTrans 缺省 30秒) 为步长触发，防止频繁向服务端发送翻译请求
     this.#throttledTriggerTranslations = throttle(
@@ -114,6 +115,7 @@ export class BilingualSubtitleManager {
     this.#formattedSubtitles = [];
     this.#wordTooltipController?.destroy();
     this.#wordTooltipController = null;
+    this.#broadcastSubtitleSync(null);
   }
 
   /**
@@ -375,6 +377,9 @@ export class BilingualSubtitleManager {
     this.#videoEl.addEventListener("timeupdate", this.onTimeUpdate);
     this.#videoEl.addEventListener("seeking", this.onSeeking);
     this.#videoEl.addEventListener("seeked", this.onSeek);
+    this.#videoEl.addEventListener("play", this.onPlayStateChange);
+    this.#videoEl.addEventListener("pause", this.onPlayStateChange);
+    this.#videoEl.addEventListener("ended", this.onPlayStateChange);
   }
 
   /**
@@ -384,6 +389,33 @@ export class BilingualSubtitleManager {
     this.#videoEl.removeEventListener("timeupdate", this.onTimeUpdate);
     this.#videoEl.removeEventListener("seeking", this.onSeeking);
     this.#videoEl.removeEventListener("seeked", this.onSeek);
+    this.#videoEl.removeEventListener("play", this.onPlayStateChange);
+    this.#videoEl.removeEventListener("pause", this.onPlayStateChange);
+    this.#videoEl.removeEventListener("ended", this.onPlayStateChange);
+  }
+
+  /**
+   * 播放状态变更（播放/暂停）时同步广播当前字幕与播放状态
+   */
+  onPlayStateChange() {
+    const currentSubtitle =
+      this.#currentSubtitleIndex !== -1
+        ? this.#formattedSubtitles[this.#currentSubtitleIndex]
+        : null;
+    this.#broadcastSubtitleSync(currentSubtitle);
+  }
+
+  /**
+   * 跨页面广播当前视频的双语字幕与播放状态
+   */
+  #broadcastSubtitleSync(subtitle) {
+    this.#setting.onSubtitleBroadcast?.({
+      text: subtitle?.text || "",
+      translation: subtitle?.translation || "",
+      isPlaying: this.#videoEl ? !this.#videoEl.paused : false,
+      currentTime: this.#videoEl ? this.#videoEl.currentTime : 0,
+      duration: this.#videoEl ? this.#videoEl.duration : 0,
+    });
   }
 
   /**
@@ -571,6 +603,8 @@ export class BilingualSubtitleManager {
     } else {
       this.#paperEl.style.display = "none";
     }
+
+    this.#broadcastSubtitleSync(subtitle);
   }
 
   /**

@@ -2,7 +2,13 @@ import { logger } from "../libs/log.js";
 import { apiSubtitle, apiSummarizeContext } from "../apis/index.js";
 import { BilingualSubtitleManager } from "./BilingualSubtitleManager.js";
 import { YouTubeSubtitleList } from "./YouTubeSubtitleList.js";
-import { MSG_XHR_DATA_YOUTUBE, API_SPE_TYPES } from "../config";
+import {
+  MSG_XHR_DATA_YOUTUBE,
+  MSG_SUBTITLE_BROADCAST,
+  MSG_SUBTITLE_CONTROL,
+  API_SPE_TYPES,
+} from "../config";
+import { browser } from "../libs/browser.js";
 import { downloadBlobFile } from "../libs/utils.js";
 import { newI18n } from "../config";
 import { buildBilingualVtt } from "./vtt.js";
@@ -81,6 +87,8 @@ export class YouTubeCaptionProvider {
 
   // 挂载在视频右侧/下方的双语字幕列表面板管理器实例
   #subtitleListManager = null;
+  // 跨标签页字幕广播通道
+  #syncBroadcastChannel = null;
 
   /**
    * 创建 YouTube 字幕处理器实例，并初始化用户配置、国际化和播放器 UI 管理器。
@@ -155,6 +163,14 @@ export class YouTubeCaptionProvider {
         }
       }
     });
+
+    if (browser?.runtime?.onMessage) {
+      browser.runtime.onMessage.addListener((message) => {
+        if (message?.action === MSG_SUBTITLE_CONTROL && message?.args) {
+          this.#handleSubtitleControl(message.args);
+        }
+      });
+    }
 
     window.addEventListener("yt-navigate-finish", () => {
       logger.debug("Youtube Provider: yt-navigate-finish", this.#videoId);
@@ -976,6 +992,10 @@ export class YouTubeCaptionProvider {
         // 由渲染管理器按 timeupdate/seeked 上报播放窗口，provider 再决定是否触发后续 AI chunk。
         onSubtitleTimeWindow: ({ currentTimeMs, preTrans }) =>
           this.#scheduleAiChunks(currentTimeMs, preTrans),
+        // 跨标签页字幕广播通道
+        onSubtitleBroadcast: (syncData) => {
+          this.#broadcastSubtitleState(syncData);
+        },
       },
     });
 
@@ -1011,6 +1031,74 @@ export class YouTubeCaptionProvider {
   }
 
   /**
+   * 广播当前视频的双语字幕及播放状态给其他标签页
+   */
+  #broadcastSubtitleState(syncData) {
+    const data = {
+      ...syncData,
+      videoTitle:
+        this.#docInfo?.title ||
+        document.title.replace(/ - YouTube$/, "").trim() ||
+        "YouTube 视频",
+    };
+
+    if (browser?.runtime?.sendMessage) {
+      try {
+        Promise.resolve(
+          browser.runtime.sendMessage({
+            action: MSG_SUBTITLE_BROADCAST,
+            args: data,
+          })
+        ).catch(() => {});
+      } catch {}
+    }
+
+    try {
+      if (typeof BroadcastChannel !== "undefined") {
+        if (!this.#syncBroadcastChannel) {
+          this.#syncBroadcastChannel = new BroadcastChannel(
+            "kiss_subtitle_sync"
+          );
+        }
+        this.#syncBroadcastChannel.postMessage(data);
+      }
+    } catch {}
+  }
+
+  /**
+   * 响应来自其他标签页的播放控制指令
+   */
+  #handleSubtitleControl(args) {
+    const video = this.#videoEl;
+    if (!video) return;
+
+    switch (args?.action) {
+      case "toggle_play":
+        if (video.paused) {
+          video.play().catch(() => {});
+        } else {
+          video.pause();
+        }
+        break;
+      case "play":
+        video.play().catch(() => {});
+        break;
+      case "pause":
+        video.pause();
+        break;
+      case "seek":
+        if (typeof args.delta === "number") {
+          video.currentTime = Math.max(
+            0,
+            Math.min(video.duration || Infinity, video.currentTime + args.delta)
+          );
+        }
+        break;
+      default:
+    }
+  }
+
+  /**
    * 销毁双语字幕管理器以及字幕侧边栏，恢复网页原生字幕展示状态。
    *
    * @private
@@ -1018,6 +1106,12 @@ export class YouTubeCaptionProvider {
    */
   #destroyManager() {
     this.#playerUi.showYtCaption();
+    this.#broadcastSubtitleState({
+      text: "",
+      translation: "",
+      isPlaying: false,
+      closed: true,
+    });
 
     if (!this.#managerInstance) {
       return;
