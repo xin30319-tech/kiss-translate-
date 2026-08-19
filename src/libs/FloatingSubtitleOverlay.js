@@ -30,6 +30,10 @@ export class FloatingSubtitleOverlay {
   #latestState = null;
   #hideTimer = null;
   #pollTimer = null;
+  #renderedText = "";
+  #renderedTrans = "";
+  #renderedIsPlaying = null;
+  #renderedTitle = "";
 
   constructor() {
     this.#loadSettings();
@@ -221,24 +225,25 @@ export class FloatingSubtitleOverlay {
         font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
       }
       .kiss-float-card {
-        all: initial;
-        box-sizing: border-box;
-        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+        box-sizing: border-box !important;
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif !important;
         position: fixed !important;
-        min-width: 320px;
-        max-width: 760px;
-        background: rgba(15, 23, 42, 0.94) !important;
-        backdrop-filter: blur(16px);
-        -webkit-backdrop-filter: blur(16px);
-        border: 1px solid rgba(255, 255, 255, 0.18) !important;
+        min-width: 360px !important;
+        max-width: 800px !important;
+        background: rgba(15, 23, 42, 0.96) !important;
+        backdrop-filter: blur(20px) !important;
+        -webkit-backdrop-filter: blur(20px) !important;
+        border: 1px solid rgba(255, 255, 255, 0.22) !important;
         border-radius: 16px !important;
-        box-shadow: 0 16px 48px rgba(0, 0, 0, 0.65), 0 0 0 1px rgba(255, 255, 255, 0.08) !important;
-        padding: 10px 18px 14px 18px !important;
+        box-shadow: 0 20px 50px rgba(0, 0, 0, 0.75), 0 0 0 1px rgba(255, 255, 255, 0.1) !important;
+        padding: 12px 20px 16px 20px !important;
         color: #f8fafc !important;
         pointer-events: auto !important;
         cursor: default !important;
         z-index: 2147483647 !important;
         display: none !important;
+        margin: 0 !important;
+        line-height: normal !important;
       }
       .kiss-float-card.visible {
         display: block !important;
@@ -638,26 +643,28 @@ export class FloatingSubtitleOverlay {
     }
 
     // 更新内容：有文本时更新，遇到句间短暂停顿时保持上一句，避免卡片剧烈忽闪忽现
-    if (data.text || data.translation) {
-      if (this.#titleEl) {
-        this.#titleEl.textContent = data.videoTitle || "YouTube 视频";
-      }
-      if (this.#originEl) {
-        this.#originEl.textContent = data.text;
-        this.#originEl.style.display = "block";
-      }
-      if (this.#transEl) {
-        this.#transEl.textContent = data.translation || data.text;
-      }
-    } else if (this.#titleEl && data.videoTitle) {
-      this.#titleEl.textContent = data.videoTitle;
-    }
+    const newText = data.text || this.#renderedText;
+    const newTrans = data.translation || data.text || this.#renderedTrans;
+    const newTitle = data.videoTitle || this.#renderedTitle || "YouTube 视频";
+    const newIsPlaying = !!data.isPlaying;
 
-    if (this.#playPauseBtn) {
-      this.#playPauseBtn.textContent = data.isPlaying ? "⏸" : "▶";
-      this.#playPauseBtn.title = data.isPlaying
-        ? "点击暂停视频"
-        : "点击播放视频";
+    if (this.#titleEl && newTitle !== this.#renderedTitle) {
+      this.#titleEl.textContent = newTitle;
+      this.#renderedTitle = newTitle;
+    }
+    if (this.#originEl && newText !== this.#renderedText) {
+      this.#originEl.textContent = newText;
+      this.#originEl.style.display = newText ? "block" : "none";
+      this.#renderedText = newText;
+    }
+    if (this.#transEl && newTrans !== this.#renderedTrans) {
+      this.#transEl.textContent = newTrans;
+      this.#renderedTrans = newTrans;
+    }
+    if (this.#playPauseBtn && newIsPlaying !== this.#renderedIsPlaying) {
+      this.#playPauseBtn.textContent = newIsPlaying ? "⏸" : "▶";
+      this.#playPauseBtn.title = newIsPlaying ? "点击暂停视频" : "点击播放视频";
+      this.#renderedIsPlaying = newIsPlaying;
     }
 
     this.show();
