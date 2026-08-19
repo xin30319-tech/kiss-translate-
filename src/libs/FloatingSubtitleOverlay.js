@@ -492,12 +492,18 @@ export class FloatingSubtitleOverlay {
     this.#cardEl.appendChild(body);
     this.#shadowRoot.appendChild(this.#cardEl);
 
-    // 挂载到 body
-    (document.body || document.documentElement).appendChild(this.#hostEl);
+    this.#ensureMounted();
 
     this.#applyScale();
     this.#restorePosition();
     this.#enableDragging(dragHandle, toolbar);
+  }
+
+  #ensureMounted() {
+    const target = document.body || document.documentElement;
+    if (this.#hostEl && target && this.#hostEl.parentNode !== target) {
+      target.appendChild(this.#hostEl);
+    }
   }
 
   #restorePosition() {
@@ -637,11 +643,7 @@ export class FloatingSubtitleOverlay {
     this.#createDom();
     if (!this.#cardEl) return;
 
-    // 确保已挂载进页面 DOM
-    const container = document.body || document.documentElement;
-    if (this.#hostEl && container && !container.contains(this.#hostEl)) {
-      container.appendChild(this.#hostEl);
-    }
+    this.#ensureMounted();
 
     // 更新内容：有文本时更新，遇到句间短暂停顿时保持上一句，避免卡片剧烈忽闪忽现
     const newText = data.text || this.#renderedText;
@@ -696,22 +698,16 @@ export class FloatingSubtitleOverlay {
     if (!this.#hostEl) {
       this.#createDom();
     }
-    if (this.#hostEl && !document.body?.contains(this.#hostEl)) {
-      (document.body || document.documentElement).appendChild(this.#hostEl);
-    }
-    if (this.#cardEl) {
+    this.#ensureMounted();
+    if (this.#cardEl && !this.#cardEl.classList.contains("visible")) {
       this.#cardEl.classList.add("visible");
-      this.#cardEl.style.opacity = "1";
-      this.#cardEl.style.visibility = "visible";
       this.#cardEl.style.display = "block";
     }
   }
 
   hide() {
-    if (this.#cardEl) {
+    if (this.#cardEl && this.#cardEl.classList.contains("visible")) {
       this.#cardEl.classList.remove("visible");
-      this.#cardEl.style.opacity = "0";
-      this.#cardEl.style.visibility = "hidden";
       this.#cardEl.style.display = "none";
     }
   }
