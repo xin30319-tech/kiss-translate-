@@ -833,15 +833,16 @@ export class BilingualSubtitleManager {
       style.textContent = `
         * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; }
         body {
-          background: #0f172a;
+          background: rgba(15, 23, 42, 0.65);
           color: #f8fafc;
-          padding: 10px 16px;
+          padding: 8px 14px;
           display: flex;
           flex-direction: column;
           justify-content: space-between;
           height: 100vh;
           user-select: none;
           overflow: hidden;
+          transition: background 0.2s ease;
         }
         .pip-header {
           display: flex;
@@ -849,23 +850,24 @@ export class BilingualSubtitleManager {
           justify-content: space-between;
           font-size: 11px;
           color: #94a3b8;
-          padding-bottom: 6px;
+          padding-bottom: 4px;
           border-bottom: 1px solid rgba(255, 255, 255, 0.1);
         }
         .pip-title {
           overflow: hidden;
           text-overflow: ellipsis;
           white-space: nowrap;
-          max-width: 55%;
+          max-width: 50%;
           font-weight: 500;
+          text-shadow: 0 1px 2px rgba(0, 0, 0, 0.8);
         }
         .pip-controls {
           display: flex;
           gap: 4px;
         }
         .pip-btn {
-          background: rgba(255, 255, 255, 0.08);
-          border: 1px solid rgba(255, 255, 255, 0.15);
+          background: rgba(255, 255, 255, 0.12);
+          border: 1px solid rgba(255, 255, 255, 0.2);
           color: #cbd5e1;
           border-radius: 4px;
           padding: 2px 6px;
@@ -873,7 +875,7 @@ export class BilingualSubtitleManager {
           cursor: pointer;
         }
         .pip-btn:hover {
-          background: rgba(255, 255, 255, 0.2);
+          background: rgba(255, 255, 255, 0.25);
           color: #fff;
         }
         .pip-content {
@@ -882,21 +884,21 @@ export class BilingualSubtitleManager {
           flex-direction: column;
           justify-content: center;
           text-align: center;
-          gap: 6px;
-          padding: 6px 0;
+          gap: 4px;
+          padding: 4px 0;
         }
         .pip-origin {
-          color: #cbd5e1;
+          color: #f1f5f9;
           font-size: 13px;
           line-height: 1.4;
-          opacity: 0.9;
+          text-shadow: 0 1px 3px rgba(0, 0, 0, 0.9), 0 0 2px rgba(0, 0, 0, 0.9);
         }
         .pip-trans {
           color: #38bdf8;
           font-weight: 600;
           font-size: 16px;
           line-height: 1.4;
-          text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
+          text-shadow: 0 2px 4px rgba(0, 0, 0, 0.95), 0 0 3px rgba(0, 0, 0, 0.9);
         }
       `;
       doc.head.appendChild(style);
@@ -955,12 +957,27 @@ export class BilingualSubtitleManager {
         this.#updatePipScale();
       };
 
+      // 透明度切换按钮
+      const opacities = [0.65, 0.4, 0.15, 0.0, 0.9];
+      let opacityIdx = 0;
+      const opacityBtn = doc.createElement("button");
+      opacityBtn.className = "pip-btn";
+      opacityBtn.textContent = "💧 65%";
+      opacityBtn.title = "点击切换背景透明度";
+      opacityBtn.onclick = () => {
+        opacityIdx = (opacityIdx + 1) % opacities.length;
+        const currentOpacity = opacities[opacityIdx];
+        doc.body.style.background = `rgba(15, 23, 42, ${currentOpacity})`;
+        opacityBtn.textContent = `💧 ${Math.round(currentOpacity * 100)}%`;
+      };
+
       controls.append(
         seekBackBtn,
         this.#pipPlayPauseBtn,
         seekFwdBtn,
         zoomOutBtn,
-        zoomInBtn
+        zoomInBtn,
+        opacityBtn
       );
       header.append(titleSpan, controls);
 
